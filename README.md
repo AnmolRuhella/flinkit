@@ -1,6 +1,6 @@
 # Flinkit
 
-Delivery agent system — orders, agents, tracking.
+Marketplace + delivery — sellers, customers, agents, tracking.
 
 **Started:** 28-05-2026
 
@@ -9,8 +9,8 @@ Delivery agent system — orders, agents, tracking.
 ```
 flink-it/
 ├── apps/web/     # React frontend
-├── apps/api/     # Node API → MongoDB
-└── docker/       # MongoDB (local)
+├── apps/api/     # Node API → MongoDB Atlas
+└── docker/       # optional later
 ```
 
 ## Stack
@@ -19,37 +19,49 @@ flink-it/
 |---|------------------------|----------------------|
 | Core | React, TypeScript, **Vite** | Node 20+, TypeScript, **Fastify** |
 | Forms / validation | **RHF** + **Zod** | **Zod** |
-| Data | **TanStack Query** (API + server state) | **Mongoose** → **MongoDB** |
+| Data | **TanStack Query** | **Mongoose** → **MongoDB** |
 | UI | **Tailwind** + **shadcn/ui** | — |
 | Routing | **React Router** | — |
 | Auth | — | **JWT** + **bcrypt** |
 
-**Phase 2 (later):** Redis, Kafka, `apps/worker`, WebSocket.
+**Phase 2 (later):** Redis, Kafka, `apps/worker`, WebSocket / live map.
+
+## Roles
+
+| Role | Who | Does |
+|------|-----|------|
+| `CUSTOMER` | Buyer | Place orders, track delivery |
+| `SELLER` | Merchant | List products, confirm / prepare orders |
+| `AGENT` | Delivery | Accept assign, pickup → drop, share live location |
+| `ADMIN` | Ops (optional) | Manage users / disputes — later |
+
+## Location
+
+| Who | What we store |
+|-----|----------------|
+| **Seller** | Shop / pickup address (on profile or order) |
+| **Customer** | Drop address (on order) |
+| **Agent** | Live lat/lng + online status (frequent updates) |
+
+MVP: addresses on order + agent last location. Live map / WebSocket → Phase 2.
 
 ## Architecture
 
 ```
-apps/web  →  apps/api  →  MongoDB
+apps/web  →  apps/api  →  MongoDB Atlas
 ```
 
-**Frontend rules**
-
-- API data → TanStack Query (`useQuery` / `useMutation`)
-- Forms → RHF + Zod
-- UI-only state → local state (Zustand if needed later)
-
-**Backend rules**
-
-- `routes` → `controllers` → `services` → `models`
-- Assign / status change → atomic `findOneAndUpdate` (e.g. only when `status: PENDING`)
+**Frontend:** API data → TanStack Query · Forms → RHF + Zod  
+**Backend:** `routes` → `controllers` → `services` → `models` · assign via atomic `findOneAndUpdate`
 
 ## MongoDB (MVP)
 
 | Collection | Purpose |
 |------------|---------|
-| `users` | auth, role: `CUSTOMER` \| `AGENT` \| `ADMIN` |
-| `agent_profiles` | online, location |
-| `orders` | pickup/drop, status, assigned agent |
+| `users` | auth, role: `CUSTOMER` \| `SELLER` \| `AGENT` \| `ADMIN` |
+| `seller_profiles` | shop name, pickup address |
+| `agent_profiles` | isOnline, lastLat/lng |
+| `orders` | seller, customer, agent, pickup/drop, status |
 | `order_status_histories` | audit trail |
 
 **Order status:** `PENDING` → `CONFIRMED` → `ASSIGNED` → `PICKED_UP` → `DELIVERED` (or `CANCELLED`)
@@ -62,20 +74,20 @@ apps/web  →  apps/api  →  MongoDB
 
 | Variable | Where |
 |----------|--------|
-| `VITE_API_URL` | web — e.g. `http://localhost:3000` |
-| `MONGODB_URI` | api — `mongodb://localhost:27017/flinkit` |
-| `PORT` | api — `3000` |
+| `VITE_API_URL` | web — `http://localhost:4000` |
+| `MONGODB_URI` | api — Atlas `mongodb+srv://...` (password: encode `@` → `%40`) |
+| `PORT` | api — `4000` |
 | `JWT_ACCESS_SECRET` | api |
 | `CORS_ORIGIN` | api — `http://localhost:5173` |
 
-## Local dev (when scaffolded)
+## Local dev
 
 ```bash
-cd docker && docker compose up -d    # MongoDB :27017
-# apps/api → npm run dev
-# apps/web → npm run dev
+cd apps/api && cp .env.example .env && npm install && npm run dev
+curl http://localhost:4000/health
+
+# Register (role: CUSTOMER | SELLER | AGENT)
+curl -X POST http://localhost:4000/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Anmol","email":"anmol@test.com","password":"password123","role":"CUSTOMER"}'
 ```
-
----
-
-_Details change over time — update this file when stack shifts._
