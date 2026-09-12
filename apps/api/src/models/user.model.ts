@@ -1,6 +1,11 @@
 import mongoose, { Schema, type InferSchemaType } from "mongoose";
 
-export const USER_ROLES = ["CUSTOMER", "SELLER", "AGENT"] as const;
+/** Roles allowed via public register */
+export const PUBLIC_ROLES = ["CUSTOMER", "SELLER", "AGENT"] as const;
+export type PublicRole = (typeof PUBLIC_ROLES)[number];
+
+/** All roles in the system */
+export const USER_ROLES = [...PUBLIC_ROLES, "SUPERADMIN"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 const userSchema = new Schema(

@@ -1,4 +1,4 @@
-import type { UserRole } from "../../models/user.model.js";
+import type { UserRole } from "../models/user.model.js";
 
 export type JwtPayload = {
   sub: string;
