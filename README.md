@@ -33,7 +33,10 @@ flink-it/
 | `CUSTOMER` | Buyer | Place orders, track delivery |
 | `SELLER` | Merchant | List products, confirm / prepare orders |
 | `AGENT` | Delivery | Accept assign, pickup → drop, share live location |
-| `ADMIN` | Ops (optional) | Manage users / disputes — later |
+| `SUPERADMIN` | Ops | List all users / manage system — seed only, not public register |
+
+Public register: `CUSTOMER` \| `SELLER` \| `AGENT` only.  
+`GET /auth/users` → **SUPERADMIN** only (`GET /admin/users`). Admin portal (`apps/admin`) later.
 
 ## Location
 
@@ -58,17 +61,22 @@ apps/web  →  apps/api  →  MongoDB Atlas
 
 | Collection | Purpose |
 |------------|---------|
-| `users` | auth, role: `CUSTOMER` \| `SELLER` \| `AGENT` \| `ADMIN` |
-| `seller_profiles` | shop name, pickup address |
-| `agent_profiles` | isOnline, lastLat/lng |
-| `orders` | seller, customer, agent, pickup/drop, status |
-| `order_status_histories` | audit trail |
+| `users` | auth, role: `CUSTOMER` \| `SELLER` \| `AGENT` \| `SUPERADMIN` |
+| `sellerprofiles` | shop name, pickup address, isOpen |
+| `products` | seller catalog (name, price, availability) |
+| `orders` | seller, customer, agent, items, pickup/drop, status |
+| `orderstatushistories` | audit trail |
 
 **Order status:** `PENDING` → `CONFIRMED` → `ASSIGNED` → `PICKED_UP` → `DELIVERED` (or `CANCELLED`)
 
 ## API (MVP)
 
-`POST /auth/register` · `POST /auth/login` · `GET|POST /orders` · `GET /orders/:id` · `PATCH /orders/:id/status` · `GET /agents` · `PATCH /agents/me/status` · `PATCH /agents/me/location` · `GET /health`
+**Auth:** `POST /auth/register` · `POST /auth/login` · `GET /auth/me`  
+**Admin:** `GET /admin/users` · `GET /admin/users/:id` (SUPERADMIN)  
+**Orders (Blinkit-style):**  
+Customer `POST /orders` → Shop `POST /orders/:id/confirm` → Agents see `GET /orders/available` → Agent `POST /orders/:id/accept` → `PATCH .../status` pickup/deliver
+
+Also: `GET /orders` · `GET /orders/:id` · cancel via `PATCH .../status`
 
 ## Env
 
@@ -83,11 +91,26 @@ apps/web  →  apps/api  →  MongoDB Atlas
 ## Local dev
 
 ```bash
-cd apps/api && cp .env.example .env && npm install && npm run dev
-curl http://localhost:4000/health
-
-# Register (role: CUSTOMER | SELLER | AGENT)
-curl -X POST http://localhost:4000/auth/register \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Anmol","email":"anmol@test.com","password":"password123","role":"CUSTOMER"}'
+cd apps/api && npm install && npm run seed:demo && npm run dev   # :4000
+cd apps/web && npm install && npm run dev                       # :5173
 ```
+
+### Demo logins (password `Demo@12345`)
+
+| Email | Role | What to do |
+|-------|------|------------|
+| `customer@flinkit.demo` | Customer | Open **Fresh Mart Baner**, add items, checkout |
+| `seller@flinkit.demo` | Seller | Accept **PENDING** order |
+| `agent@flinkit.demo` | Agent | Available jobs auto-refresh (CONFIRMED) → accept → deliver |
+| `admin@flinkit.com` | Superadmin | `/admin` |
+
+Seed also creates shop + 5 products + 1 PENDING + 1 CONFIRMED sample order.
+
+### E2E flow
+
+1. Customer → browse shop → cart → place order  
+2. Seller → pending list (polls 5s) → Accept  
+3. Agent → “Available jobs” (polls 5s, toast on new) → Accept delivery → Picked up → Delivered  
+
+**Web:** Vite + React + TanStack Query + RHF + Zod + Tailwind  
+**Notification (MVP):** agent polls `/orders/available` — push/Kafka later.

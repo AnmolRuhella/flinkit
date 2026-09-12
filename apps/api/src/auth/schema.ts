@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { USER_ROLES } from "../models/user.model.js";
+import { PUBLIC_ROLES } from "../models/user.model.js";
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters"),
   email: z.string().trim().email("Invalid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(USER_ROLES, {
+  role: z.enum(PUBLIC_ROLES, {
     errorMap: () => ({
       message: "Role must be CUSTOMER, SELLER, or AGENT",
     }),

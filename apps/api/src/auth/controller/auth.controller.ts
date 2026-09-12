@@ -4,7 +4,6 @@ import { AuthError } from "../errors.js";
 import { loginSchema, registerSchema } from "../schema.js";
 import { createUser } from "../service/create.js";
 import { getUserById } from "../service/get.js";
-import { getAllUsers } from "../service/getAll.js";
 import { loginUser } from "../service/login.js";
 
 function formatZodError(error: ZodError) {
@@ -42,25 +41,6 @@ export async function login(request: FastifyRequest, reply: FastifyReply) {
     const body = loginSchema.parse(request.body);
     const result = await loginUser(body);
     return reply.status(200).send(result);
-  } catch (error) {
-    return handleError(error, reply);
-  }
-}
-
-export async function getAll(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const users = await getAllUsers();
-    return reply.status(200).send({ users, count: users.length });
-  } catch (error) {
-    return handleError(error, reply);
-  }
-}
-
-export async function getMe(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const { id } = request.params as { id: string };
-    const user = await getUserById(id);
-    return reply.status(200).send({ user });
   } catch (error) {
     return handleError(error, reply);
   }

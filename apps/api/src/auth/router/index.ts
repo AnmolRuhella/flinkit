@@ -3,12 +3,10 @@ import * as authController from "../controller/auth.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 
 export const authRouter: FastifyPluginAsync = async (app) => {
-  // Public — no token needed
+  // Public
   app.post("/register", authController.register);
   app.post("/login", authController.login);
 
-  // Protected — only registered + logged-in users
-  app.get("/users", { preHandler: [authenticate] }, authController.getAll);
-  app.get("/users/:id", { preHandler: [authenticate] }, authController.getMe);
+  // Any logged-in user
   app.get("/me", { preHandler: [authenticate] }, authController.getProfile);
 };
